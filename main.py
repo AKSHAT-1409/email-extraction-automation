@@ -8,7 +8,7 @@ from services.sheets_service import append_to_sheet, initialize_sheet
 from utils.dedup import load_processed_ids, save_processed_id
 from utils.cleaner import extract_clean_text
 
-from config import POLLING_INTERVAL
+from config import POLLING_INTERVAL, PRIORITY_SENDER
 
 
 def process_email(email, processed_ids):
@@ -66,6 +66,9 @@ def main():
                 print("📭 No new emails found.")
             else:
                 print(f"📬 Found {len(emails)} emails.")
+
+                # Prioritize emails from the priority sender
+                emails.sort(key=lambda e: PRIORITY_SENDER.lower() not in e.get("from", "").lower())
 
                 for email in emails:
                     process_email(email, processed_ids)
