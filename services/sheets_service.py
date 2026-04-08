@@ -12,8 +12,14 @@ def get_sheet():
         "service_account.json", scopes=SCOPES
     )
     client = gspread.authorize(creds)
-
-    sheet = client.open_by_key("1MbD9crqdRiQQ_35lPq9J-m8qXUcn4-_hC-SnXMoxZG4").worksheet("email-extractor")
+    spreadsheet = client.open_by_key("1MbD9crqdRiQQ_35lPq9J-m8qXUcn4-_hC-SnXMoxZG4")
+    
+    try:
+        sheet = spreadsheet.worksheet(SHEET_NAME)
+    except gspread.exceptions.WorksheetNotFound:
+        # Create it if it doesn't exist
+        sheet = spreadsheet.add_worksheet(title=SHEET_NAME, rows=1000, cols=20)
+        
     return sheet
 
 
@@ -43,3 +49,29 @@ def append_to_sheet(data):
 
     except Exception as e:
         print(f"[SHEET ERROR] {str(e)}")
+
+
+def initialize_sheet():
+    sheet = get_sheet()
+
+    headers = [
+        "extracted_at",
+        "source_email",
+        "job_title",
+        "job_id",
+        "facility_name",
+        "location",
+        "job_type",
+        "shift",
+        "duration",
+        "start_date",
+        "hourly_rate",
+        "experience_required",
+        "certifications"
+    ]
+
+    existing = sheet.get_all_values()
+
+    if not existing:
+        sheet.append_row(headers)
+        print("[SHEET] Headers added")

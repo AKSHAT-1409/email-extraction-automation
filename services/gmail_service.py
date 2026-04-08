@@ -41,7 +41,7 @@ def get_email_body(msg):
     return ""
 
 
-def fetch_emails():
+def fetch_emails(processed_ids):
     service = get_service()
 
     results = service.users().messages().list(
@@ -54,6 +54,9 @@ def fetch_emails():
     emails = []
 
     for msg in messages:
+        if msg['id'] in processed_ids:
+            continue
+
         msg_data = service.users().messages().get(
             userId='me',
             id=msg['id']

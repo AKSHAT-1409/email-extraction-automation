@@ -1,9 +1,9 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from services.gmail_service import fetch_emails
 from services.parser_service import parse_email
-from services.sheets_service import append_to_sheet
+from services.sheets_service import append_to_sheet, initialize_sheet
 
 from utils.dedup import load_processed_ids, save_processed_id
 from utils.cleaner import extract_clean_text
@@ -34,7 +34,7 @@ def process_email(email, processed_ids):
             return
 
         # Add metadata
-        structured_data["extracted_at"] = datetime.utcnow().isoformat()
+        structured_data["extracted_at"] = datetime.now(timezone.utc).isoformat()
         structured_data["source_email"] = email.get("from", "")
 
         # Store in Google Sheets
@@ -52,13 +52,15 @@ def process_email(email, processed_ids):
 def main():
     print("🚀 Starting Email Extraction Automation System...")
 
+    initialize_sheet()
+
     processed_ids = load_processed_ids()
 
     while True:
         try:
             print("\n🔄 Checking for new emails...")
 
-            emails = fetch_emails()
+            emails = fetch_emails(processed_ids)
 
             if not emails:
                 print("📭 No new emails found.")

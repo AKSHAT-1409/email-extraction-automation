@@ -1,15 +1,13 @@
 import os
 import json
 import re
-import google.generativeai as genai
+import time
+from google import genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-model = genai.GenerativeModel("gemini-1.5-flash")
-
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def parse_email(email_text):
     if not email_text:
@@ -41,24 +39,35 @@ Email:
 {email_text}
 """
 
-    try:
-        response = model.generate_content(prompt)
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+            )
 
-        content = response.text.strip()
+            content = response.text.strip()
 
-        # 🔥 Extract only JSON (important for Gemini)
-        json_match = re.search(r"\{.*\}", content, re.DOTALL)
+            # 🔥 Extract only JSON (important for Gemini)
+            json_match = re.search(r"\{.*\}", content, re.DOTALL)
 
-        if not json_match:
-            print("[PARSER ERROR] No valid JSON found")
-            return None
+            if not json_match:
+                print(f"[PARSER ERROR] Attempt {attempt + 1}: No valid JSON found")
+                if attempt == 2:
+                    return None
+                time.sleep(2 ** attempt)
+                continue
 
-        json_str = json_match.group()
+            json_str = json_match.group()
 
-        data = json.loads(json_str)
+            data = json.loads(json_str)
 
-        return data
+            return data
 
-    except Exception as e:
-        print(f"[PARSER ERROR] {str(e)}")
-        return None
+        except Exception as e:
+            print(f"[PARSER ERROR] Attempt {attempt + 1}: {str(e)}")
+            if attempt == 2:
+                return None
+            
+            # Wait with exponential backoff: 1s, 2s, 4s...
+            time.sleep(2 ** attempt)
