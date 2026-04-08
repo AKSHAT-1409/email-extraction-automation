@@ -7,7 +7,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from config import MAX_RESULTS
+from config import MAX_RESULTS, PRIORITY_SENDER
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -62,16 +62,31 @@ def get_email_body(msg):
 def fetch_emails(processed_ids):
     service = get_service()
 
-    results = service.users().messages().list(
+    # 1. VIP Express Lane: Explicitly fetch latest from Priority Sender
+    vip_results = service.users().messages().list(
+        userId='me',
+        maxResults=5,
+        q=f"from:{PRIORITY_SENDER}"
+    ).execute()
+    vip_messages = vip_results.get('messages', [])
+
+    # 2. Standard Lane: Fetch the latest general inbox emails
+    standard_results = service.users().messages().list(
         userId='me',
         maxResults=MAX_RESULTS
     ).execute()
+    standard_messages = standard_results.get('messages', [])
 
-    messages = results.get('messages', [])
+    # Merge both lists and mathematically deduplicate by ID
+    all_messages = {}
+    for msg in (vip_messages + standard_messages):
+        all_messages[msg['id']] = msg
+
+    messages_to_process = list(all_messages.values())
 
     emails = []
 
-    for msg in messages:
+    for msg in messages_to_process:
         if msg['id'] in processed_ids:
             continue
 

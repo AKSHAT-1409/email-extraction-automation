@@ -75,3 +75,8 @@ def initialize_sheet():
     if not existing:
         sheet.append_row(headers)
         print("[SHEET] Headers added")
+    else:
+        first_row = existing[0]
+        if not first_row or first_row[0] != "extracted_at":
+            sheet.insert_row(headers, index=1)
+            print("[SHEET] Headers inserted at row 1")

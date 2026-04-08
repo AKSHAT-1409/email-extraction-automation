@@ -4,4 +4,8 @@ __pycache__/
 data/processed_emails.json
 venv
 gmail_credentials.json
+service_account.jsontoken.json
+gmail_credentials.json
 service_account.json
+.env
+data/processed_emails.json
