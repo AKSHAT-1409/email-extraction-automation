@@ -1,11 +1,14 @@
 import os
 import json
+import re
+import google.generativeai as genai
 from dotenv import load_dotenv
-from openai import OpenAI
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 
 def parse_email(email_text):
@@ -31,32 +34,28 @@ Extract the following job details from the email:
 
 Rules:
 - Return ONLY valid JSON
-- If a field is missing, return empty string ""
-- Do not add extra text
+- If a field is missing, return ""
+- Do not add any explanation or extra text
 
 Email:
 {email_text}
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # fast + cheap + good
-            messages=[
-                {"role": "system", "content": "You extract structured data from emails."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0
-        )
+        response = model.generate_content(prompt)
 
-        content = response.choices[0].message.content.strip()
+        content = response.text.strip()
 
-        # Clean response (in case LLM adds ```json)
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
+        # 🔥 Extract only JSON (important for Gemini)
+        json_match = re.search(r"\{.*\}", content, re.DOTALL)
 
-        data = json.loads(content)
+        if not json_match:
+            print("[PARSER ERROR] No valid JSON found")
+            return None
+
+        json_str = json_match.group()
+
+        data = json.loads(json_str)
 
         return data
 
